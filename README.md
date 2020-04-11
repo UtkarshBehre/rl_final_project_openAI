@@ -1,4 +1,4 @@
-# rl_google_research_football
+# DQN, DDQN on OpenAI gym environments
 
 Environments Planned:
 
