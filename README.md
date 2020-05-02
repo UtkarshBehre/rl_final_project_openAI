@@ -30,3 +30,4 @@ Important Links
 environment.py makes img and nonimg environments
 
 
+https://web.stanford.edu/class/psych209/Readings/MnihEtAlHassibis15NatureControlDeepRL.pdf

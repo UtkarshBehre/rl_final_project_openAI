@@ -10,13 +10,11 @@ import random
 import os
 import time
 
-class Agent:
-    def __init__(self, env, ddqn, version=1, memory_len = 10000):
+class DDQNAgent_3c:
+    def __init__(self, env, memory_len = 10000):
         
         self.env = env
-        
-        # TODO: add code to check if environment is sending stacked images or not
-        # TODO: have a boolean self.is_image_based that can be used in other functions to exclude or include some code based on environment
+        self.agent_name = "DDQN_Agent_3c"
 
         self.state_dim = self.env.observation_space.shape
         self.actions_dim = self.env.action_space.n
@@ -26,15 +24,15 @@ class Agent:
         self.memory_len = memory_len
         self.batch_size = 32
 
-        self.ddqn = ddqn
         self.learning_rate = 0.0001
         self.gamma = 0.99
         
         # using np array so that calculations are faster instead of dequeue
-        self.memory = np.zeros((self.memory_len, 3 + self.n_features*2))
+        self.memory = np.zeros((self.memory_len, 3 + self.n_features*2)) 
 
         self.epsilon = 1.0
         self.epsilon_min = 0.05
+
 
         self.save_weights_cycle = 100
         self.start_after = 10
@@ -45,11 +43,13 @@ class Agent:
         
         self.model_eval = self.build_model() 
         self.model_target = self.build_model()
-        
-        print("The agent is initiallized with below parameter values.")
-        print("DDQN: %i\nmemory buffer limit:%i\nbatch size:%i\nlearning_rate:%.4f\ngamma:%.2f\n" % (self.ddqn,self.memory_len,self.batch_size,self.learning_rate, self.gamma))
+
+        print("===============================")
+        print("The agent",self.agent_name,"is initiallized with below parameter values.")
+        print("memory buffer limit:%i\nbatch size:%i\nlearning_rate:%.4f\ngamma:%.2f\n" % (self.memory_len,self.batch_size,self.learning_rate, self.gamma))
         print("Below is the neural network used:")
         print(self.model_eval.summary())
+        print("===============================")
 
         self.model_eval_path = "model_eval_weights_"
         self.model_target_path = "model_target_weights_"
@@ -61,9 +61,6 @@ class Agent:
         
         model = Sequential()
         
-
-        # TODO: add 2-4 more Conv2d layers to make sure all environments can be handled no matter how complex (with some limit ofcourse)
-
         model.add(Conv2D(input_shape=self.state_dim,data_format="channels_last",
             filters=32, kernel_size=(8,8), strides=(4,4),
         padding="same", activation="relu",
@@ -81,10 +78,6 @@ class Agent:
         
         model.add(Flatten(data_format="channels_last"))
         
-        # TODO: try adding 1-2 more Dense layers with around 256 128 units more for the environment complexity reasons
-        # TODO have these dense layers different number of units for image based and non image based environments
-        # TODO non image based environments should have less number of units, maybe around 48 or 100 at max
-
         model.add(Dense(units=512, activation="relu",
             kernel_initializer=kernel_initializer,
             bias_initializer = bias_initializer))
@@ -94,7 +87,6 @@ class Agent:
             kernel_initializer=kernel_initializer,
             bias_initializer = bias_initializer))
         
-        # TODO: Try adam optimizer to compare results once everything else is working
         optimizer = keras.optimizers.RMSprop(learning_rate=self.learning_rate, rho=0.99)
         
         model.compile(loss="mse", optimizer=optimizer)
@@ -110,8 +102,6 @@ class Agent:
         self.memory_counter +=1
     
     def learn_from_memory(self):
-
-        # TODO : have more algorithms implemented apart from ddqn and dqn 
 
         if self.memory_counter > self.memory_len: 
             sample_indices = np.random.choice(self.memory_len, size=self.batch_size, replace=False)
@@ -134,15 +124,9 @@ class Agent:
         # gets list of indices 0 to batchsize
         batch_indices = np.arange(self.batch_size, dtype=np.int32) 
 
-
-        # dqn
-        if not self.ddqn:
-            selected_q_old = np.max(q_old, axis=1)
-        ## ddqn 
-        else:
-            q_new_future = self.model_eval.predict(next_states)
-            best_actions_future = np.argmax(q_new_future, axis=1)
-            selected_q_old = q_old[batch_indices, best_actions_future]
+        q_new_future = self.model_eval.predict(next_states)
+        best_actions_future = np.argmax(q_new_future, axis=1)
+        selected_q_old = q_old[batch_indices, best_actions_future]
 
         q_target[batch_indices,actions] = rewards + (1-done) * self.gamma * selected_q_old
         
@@ -154,6 +138,8 @@ class Agent:
             self.epsilon *= self.epsilon_decay
 
     def train_agent(self, total_episodes=18000, epsilon_decay=0.9998, render = False, save_weights=False):
+        print("Now training", self.agent_name)
+
         self.epsilon = 1.0
         self.epsilon_decay = epsilon_decay
 
@@ -199,7 +185,8 @@ class Agent:
             time_spent = time.time() - start_time
             print('Episode: %i/%i, Episode Reward: %i, Epsilon: %.5f, Time Spent: %i hours %i minutes' % 
                 (episode, total_episodes, reward_every_episode, self.epsilon , int((time_spent/60)/60), int((time_spent/60)%60)), end="\r")
-            
+        print("\nTraining of", self.agent_name, "completed.")
+        
     def take_action(self, state, test=True):   
         if (np.random.uniform() <= self.epsilon):
             return np.random.randint(0, self.actions_dim)
@@ -208,7 +195,6 @@ class Agent:
             actions_value = self.model_eval.predict(state)
             return np.argmax(actions_value)
     
-    # TODO: improve the testing code
     def test_agent(self, runs = 30, render = False):
         
         self.epsilon = 0
@@ -227,10 +213,11 @@ class Agent:
                 next_state, reward, done, info = self.env.step(action)
                 cur_score += reward
                 state = next_state
-
-            print("Run: %i | Reward: %i" %(run, cur_score))
+                print("Agent: %s \t Run: %i/%i | Score: %i" % (self.agent_name, run, runs, cur_score), end="\r")
+            
             best_score = best_score if best_score>cur_score else cur_score
-        print("Best Score out of %i runs: %i" % (runs, best_score))
+
+        print("\n%s Agent's High Score in %i runs: %i " %(self.agent_name, runs, best_score))
         
     def set_model_weights(self, e_num):
         self.model_eval.load_weights(self.model_eval_path+str(e_num)+".h5")

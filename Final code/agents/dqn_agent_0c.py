@@ -8,9 +8,9 @@ from collections import deque
 import random
 import os
 
-class DQNDDQNAgent:
+class DQNAgent_0c:
     
-    def __init__(self, ddqn, version=1, memlen=2000):
+    def __init__(self, version=1, memlen=2000):
 
         env_names = {0:"CartPole-v0", 1:"CartPole-v1"}
         
@@ -22,7 +22,6 @@ class DQNDDQNAgent:
         self.memory = deque(maxlen=memlen)
         self.batch_size = 32
 
-        self.ddqn = ddqn
         self.learning_rate = 0.001
         self.gamma = 0.95
         
@@ -81,13 +80,8 @@ class DQNDDQNAgent:
         for state, action, reward, next_state, done in minibatch:
             q_future_by_target = self.model_target.predict(next_state)
             
-            if not self.ddqn:
-                # current reward + discounted future reward * estimate of future reward
-                q_to_set = np.amax(q_future_by_target[0])
-            else:
-                q_future_by_eval = self.model_eval.predict(next_state)
-                best_future_action = np.argmax(q_future_by_eval[0])
-                q_to_set = q_future_by_target[0][best_future_action]
+            # current reward + discounted future reward * estimate of future reward
+            q_to_set = np.amax(q_future_by_target[0])
 
             # map the maximized future reward to current reward
             predicted_next_rewards = self.model_eval.predict(state)

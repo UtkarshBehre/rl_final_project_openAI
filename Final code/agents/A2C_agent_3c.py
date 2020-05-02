@@ -1,21 +1,22 @@
 import gym
 import numpy as np
-from keras.layers import Dense
+import keras
+from keras.layers import Dense, Conv2D, Activation, Flatten
 from keras.models import Sequential
 from keras.optimizers import Adam
 
 # PART 2 Advantage Actor-Critic algorithm
-class A2CAgent:
+class A2CAgent_3c:
     
-    def __init__(self, env, score_limit):
+    def __init__(self, env_name, env, score_limit):
 
         # names used to print results later
         self.env_name = env_name
-        self.agent_name = "A2C"
+        self.agent_name = "A2CAgent_3c"
         self.env = env
         
         # fetching state and actions shape
-        self.state_dim = self.env.observation_space.shape[0]
+        self.state_dim = self.env.observation_space.shape
         self.actions_dim = self.env.action_space.n
         
         # defining useful values
@@ -24,7 +25,6 @@ class A2CAgent:
         self.gamma = 0.99
         self.score_limit = score_limit-5
         self.penalty = score_limit/2
-        self.units = 48
         self.hist_rewards = []
         
         # initializing the models
@@ -36,15 +36,38 @@ class A2CAgent:
         used to initialize actor and critic models 
         generates different models based on the parameters passed
         '''
+        kernel_initializer = keras.initializers.VarianceScaling(scale=1.0, mode='fan_in', distribution="normal", seed=None)
+        bias_initializer = "zeros"
+        
         model = Sequential()
-        model.add(Dense(self.units, input_dim=self.state_dim, activation="relu"))
-        model.add(Dense(output_dim, input_dim=self.units, activation = last_activation))     
+        model.add(Conv2D(input_shape=self.state_dim,data_format="channels_last",
+            filters=32, kernel_size=(8,8), strides=(4,4),
+        padding="same", activation="relu",
+            kernel_initializer=kernel_initializer))
+        
+        model.add(Conv2D(data_format="channels_last",
+            filters=64, kernel_size=(4,4), strides=(2,2),
+        padding="same", activation="relu",
+            kernel_initializer=kernel_initializer))
+        
+        model.add(Conv2D(data_format="channels_last",
+            filters=64, kernel_size=(3,3), strides=(1,1),
+        padding="same", activation="relu",
+            kernel_initializer=kernel_initializer))
+        
+        model.add(Flatten(data_format="channels_last"))
+        
+        model.add(Dense(units=512, activation="relu",
+            kernel_initializer=kernel_initializer,
+            bias_initializer = bias_initializer))
+
+        model.add(Dense(output_dim, activation = last_activation))     
         model.compile(optimizer=Adam(lr=lr), loss = loss)
         return model
     
     def take_action(self, state):
         # reshape state for the model
-        state = np.reshape(state,(1, self.state_dim))
+        state = np.expand_dims(state, axis=0)
         
         predicted_probs = self.model_actor.predict(state)[0]
         action = np.random.choice(self.actions_dim, p = predicted_probs)
@@ -53,8 +76,8 @@ class A2CAgent:
         
     def train_every_step(self, state, action, reward, done, next_state):
 
-        state = np.reshape(state, [1, self.state_dim])
-        next_state = np.reshape(next_state, [1, self.state_dim])
+        state = np.expand_dims(state, axis=0)
+        next_state = np.expand_dims(next_state, axis=0)
         critic_target = np.zeros((1,1))
     
         # advantages
@@ -124,5 +147,5 @@ class A2CAgent:
             print("Agent: %s \t Environment: %s \t Run: %i/%i | Score: %i" % (self.agent_name, self.env_name, run, total_runs, run_score), end="\r")
             best_score = best_score if best_score>run_score else run_score
 
-        print("%s Agent's High Score on %s Environment in %i runs: %i " %(self.agent_name, self.env_name, total_runs, best_score))
+        print("\n%s Agent's High Score on %s Environment in %i runs: %i " %(self.agent_name, self.env_name, total_runs, best_score))
             
