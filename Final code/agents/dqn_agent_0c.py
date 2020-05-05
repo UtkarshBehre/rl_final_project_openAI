@@ -10,11 +10,9 @@ import os
 
 class DQNAgent_0c:
     
-    def __init__(self, version=1, memlen=2000):
+    def __init__(self, env_name, memlen=2000):
 
-        env_names = {0:"CartPole-v0", 1:"CartPole-v1"}
-        
-        self.env = gym.make(env_names.get(version))
+        self.env = gym.make(env_name)
 
         self.state_dim = self.env.observation_space.shape[0]
         self.actions_dim = self.env.action_space.n

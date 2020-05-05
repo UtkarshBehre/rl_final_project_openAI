@@ -23,7 +23,7 @@ class A2CAgent_0c:
         self.lr_critic = 0.005
         self.gamma = 0.99
         self.score_limit = score_limit-5
-        self.penalty = score_limit/2
+        self.penalty = abs(score_limit)/2
         self.units = 48
         self.hist_rewards = []
         
@@ -83,6 +83,7 @@ class A2CAgent_0c:
             state = self.env.reset()
             
             while not done:
+                self.env.render()
                 action = self.take_action(state)
                 next_state, reward, done, _ = self.env.step(action)
                 
@@ -110,7 +111,7 @@ class A2CAgent_0c:
         '''
         tests the agent by running it total_runs number of times against the model
         '''
-        best_score = 0
+        best_score = -500
         for run in range(1, total_runs+1):
             run_score = 0
             done = False
